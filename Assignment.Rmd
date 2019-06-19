@@ -1,0 +1,140 @@
+---
+title: "Assignment"
+author: "Scott Stoltzman"
+date: "6/17/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('tidyverse')
+```
+
+
+## Before Starting:
+Read about the data at <https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-05-21>
+
+```{r}
+coast_vs_waste <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/coastal-population-vs-mismanaged-plastic.csv")
+
+mismanaged_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-mismanaged-plastic-waste-vs-gdp-per-capita.csv")
+
+waste_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-plastic-waste-vs-gdp-per-capita.csv")
+
+```
+
+
+# Begin EDA 
+```{r}
+# Clean Names - helps quite a bit!
+coast_vs_waste = coast_vs_waste %>% janitor::clean_names()
+mismanaged_vs_gdp = mismanaged_vs_gdp %>% janitor::clean_names()
+waste_vs_gdp = waste_vs_gdp %>% janitor::clean_names()
+```
+
+
+# Expore NA values
+Show how many `NA` there are and how to interpret these `NA` values
+< Answer Here >
+```{r}
+coast_vs_waste
+```
+
+Are there any groups of data with `NA` that stand out? Why or why not?
+< Answer Here >
+```{r}
+coast_vs_waste
+```
+
+
+
+Show how many `NA` there are and how to interpret these `NA` values
+< Answer Here >
+```{r}
+mismanaged_vs_gdp
+```
+
+Are there any groups of data with `NA` that stand out? Why or why not?
+< Answer Here >
+```{r}
+mismanaged_vs_gdp
+```
+
+
+
+
+Show how many `NA` there are and how to interpret these `NA` values
+< Answer Here >
+```{r}
+waste_vs_gdp
+```
+
+Are there any groups of data with `NA` that stand out? Why or why not?
+< Answer Here > 
+```{r}
+waste_vs_gdp
+```
+
+
+
+# Join data
+If you performed a left join between `coast_vs_waste` and `mismanaged_vs_gdp`:
+  - How would you join them? 
+  
+  <answer here>
+  
+  - How many rows and columns would you expect?
+  
+  < Answer Here >
+
+
+What is wrong with the following `left_join`?
+< Answer Here >
+```{r}
+coast_vs_waste %>% 
+  left_join(mismanaged_vs_gdp, by = 'code')
+```
+
+
+Perform the left join:
+```{r}
+# coast_vs_waste LEFT JOIN mismanaged_vs_gdp ... use the tidyverse (not raw SQL)
+```
+
+
+In words, if you were writing tests in your code, how would you check its accuracy?
+<Answer Here>
+
+
+In code, check to ensure you still have all of the years for each country from the previously joined tables.
+```{r}
+# Here is an example to see if x equals y
+frank = "FRANK"
+chase = "CHASE"
+assertthat::are_equal(frank, chase) #returns FALSE
+# Create a similar test to see if each country still has all of the years
+```
+
+Join at least two of the data sets and create a linear regression with the `lm()` function. Make sure to use a group_by that makes sense and use 2 or more predictor variables.
+```{r}
+# left_join data
+# then
+# group_by _____
+# lm() **Remember the do() function**
+```
+
+Display coefficients from your model.
+```{r}
+# write code to display them
+```
+
+Plot your data and add a line of what the model would predict. *Advanced topic*
+```{r}
+# ggplot()
+```
+
+From your analysis of the data, what would you propose as a policy decision to reduce waste? Be thorough, highlight data points that matter in tables and charts and supply succinct sentences. 
+```{r}
+# Kick it off here!
+```
+
