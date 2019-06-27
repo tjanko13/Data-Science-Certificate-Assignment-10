@@ -1,0 +1,413 @@
+---
+title: "Assignment10"
+author: "Frank Bonifazi"
+date: "6/17/2019"
+output: html_document
+---
+
+#```{r}
+install.packages("tidyverse")
+install.packages("janitor")
+#```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+library("janitor")
+```
+
+
+## Before Starting:
+Read about the data at <https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-05-21>
+
+```{r}
+coast_vs_waste <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/coastal-population-vs-mismanaged-plastic.csv")
+```
+
+```{r}
+mismanaged_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-mismanaged-plastic-waste-vs-gdp-per-capita.csv")
+```
+
+```{r}
+waste_vs_gdp <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-05-21/per-capita-plastic-waste-vs-gdp-per-capita.csv")
+
+```
+
+
+# Begin EDA 
+```{r}
+# Clean Names - helps quite a bit!
+coast_vs_waste = coast_vs_waste %>% janitor::clean_names()
+#FB: All lower-case with "_" underscores between words!
+
+mismanaged_vs_gdp = mismanaged_vs_gdp %>% janitor::clean_names()
+
+waste_vs_gdp = waste_vs_gdp %>% janitor::clean_names()
+```
+```{r}
+coast_vs_waste %>%
+  colnames()
+```
+
+# Explore NA values
+Show how many `NA` there are and how to interpret these `NA` values
+
+
+
+```{r}
+coast_vs_waste %>% summary() 
+  #filter(is.na(entity)) #%>%
+  #count()  FB: Why does count say 1???
+# Zero NAs
+```
+
+
+
+```{r}
+coast_vs_waste %>%
+  filter(is.na(code))
+  #FB: zero NAs
+```
+
+```{r}
+coast_vs_waste %>%
+  filter(is.na(year))
+  #FB: zero NAs
+```
+
+```{r}
+coast_vs_waste %>%
+  filter(is.na(mismanaged_plastic_waste_tonnes)) %>%
+ count()
+#print(n)
+#coast_vs_waste_NAs <- n
+#print(n)
+  #FB: 19,906 NAs
+```
+
+
+```{r}
+coast_vs_waste %>%
+  filter(is.na(coastal_population))
+  #FB: 19,907 NAs
+```
+```{r}
+coast_vs_waste %>%
+  filter(is.na(total_population_gapminder))
+  #FB: 12 NAs
+```
+
+
+< 39,825 > 
+FB: Per data_frame?
+Total # NAs in coast_vs.waste = 39,825
+
+
+Are there any groups of data with `NA` that stand out? Why or why not?
+
+```{r}
+coast_vs_waste %>%
+  select(mismanaged_plastic_waste_tonnes, total_population_gapminder) %>%
+filter(is.na (mismanaged_plastic_waste_tonnes)) %>%
+ filter(is.na (total_population_gapminder)) 
+  
+```
+FB:
+- Columns: mismanaged_plastic_waste_tonnes and total_population_gapminder don't have NAs in the same rows.
+
+- The 12 NAs for total_population_gapminder are all for year  2010 and have a coastal_population (<= 6M), except a place named "World"/OWID_WRL which has a 0 coastal_population.  What could this be????
+
+
+
+
+Show how many `NA` there are and how to interpret these `NA` values
+< Answer Here >
+
+```{r}
+mismanaged_vs_gdp %>%
+  colnames()
+```
+
+Are there any groups of data with `NA` that stand out? Why or why not?
+< Answer Here >
+```{r}
+mismanaged_vs_gdp %>%
+  filter(is.na(entity)) %>%
+  count()
+
+```
+FB: Zero NAs
+
+
+```{r}
+mismanaged_vs_gdp %>%
+  filter(is.na(code)) %>%
+count()
+```
+
+FB: 1,240 NAs.  NOTE: Maybe there are codes for these countries in the other tables!
+
+```{r}
+mismanaged_vs_gdp %>%
+  filter(is.na(year)) %>%
+count()
+```
+FB: Zero NAs
+
+```{r}
+mismanaged_vs_gdp %>%
+  filter(is.na(per_capita_mismanaged_plastic_waste_kilograms_per_person_per_day)) %>%
+  count()
+```
+$FB: Wow 22,018 NAs.... could this be calculated from other vars???
+
+
+```{r}
+mismanaged_vs_gdp %>%
+  filter(is.na(gdp_per_capita_ppp_constant_2011_international_rate)) %>%
+  count()
+```
+#FB: 15,797 NAs.
+
+```{r}
+mismanaged_vs_gdp %>%
+  filter(is.na(total_population_gapminder)) %>%
+  count()
+```
+FB: 2,123 NAs.  Hoe does this compare with total_population_gapminder in dataset coast_vs.waste? That dataset only had 6 NAs.  Maybe I can fill in some NAs from that data?
+
+Show how many `NA` there are and how to interpret these `NA` values
+
+< Answer Here >
+
+
+```{r}
+waste_vs_gdp %>%
+  colnames()
+```
+
+```{r}
+waste_vs_gdp %>%
+  filter(is.na(entity)) %>%
+  count()
+```
+
+
+#FB: Zerop NAs
+
+```{r}
+waste_vs_gdp %>%
+  filter(is.na(code)) %>%
+  count()
+```
+
+#FB: There are 1,240 NAs in code....same number (could be different ones though) as in mismanaged_vs_gdp. Need to compare.
+
+```{r}
+waste_vs_gdp %>%
+  filter(is.na(year)) %>%
+  count()
+```
+#FB: Zero NAs
+
+```{r}
+waste_vs_gdp %>%
+  filter(is.na(per_capita_plastic_waste_kilograms_per_person_per_day)) %>%
+  count()
+```
+
+#FB: 22,018 NAs.
+
+```{r}
+waste_vs_gdp %>%
+  filter(is.na(gdp_per_capita_ppp_constant_2011_international_constant_2011_international)) %>%   count()
+```
+
+#FB: 15,797 NAs.
+
+```{r}
+waste_vs_gdp %>%
+  filter(is.na(total_population_gapminder)) %>%
+  count()
+```
+#FB: 2,123 NAs
+
+Are there any groups of data with `NA` that stand out? Why or why not?
+< the "per_capita" numbers are high, but maybe we can compute them from the other data.The 1,240 code NAs is the same number as for the coast_vs.waste data, but might be a differnt set.> 
+
+```{r}
+waste_vs_gdp  #FB: What do you want me to do here????
+```
+
+
+
+# Join data
+If you performed a left join between `coast_vs_waste` and `mismanaged_vs_gdp`:
+  - How would you join them?
+  <answer here: Start with coast_vs_waste and left join mismanaged_vs_gdp using column code >
+  
+
+  
+
+  There are 4 common columns between these 2 datasets:
+
+coast_vs_waste
+[1] "entity"  <COMMON>                       
+[2] "code"    <COMMON>                        
+[3] "year"    <COMMON>                        
+[4] "mismanaged_plastic_waste_tonnes"
+[5] "coastal_population"             
+[6] "total_population_gapminder"  <COMMON> 
+
+mismanaged_vs_gdp
+[1] "entity"  <COMMON>                                         
+[2] "code"    <COMMON>                                          
+[3] "year"    <COMMON>                                           
+[4] "per_capita_mismanaged_plastic_waste_kilograms_per_person_per_day"
+[5] "gdp_per_capita_ppp_constant_2011_international_rate"         
+[6] "total_population_gapminder"  <COMMON>                    
+  
+  
+  - How many rows and columns would you expect?
+  
+  < 8 with a left_join>
+
+
+What is wrong with the following `left_join`?
+< It's created 2M+ rows! And it's remaming several columns with var.x and var.y.>
+```{r}
+coast_vs_waste %>% 
+  left_join(mismanaged_vs_gdp, by = 'code')
+```
+
+
+Perform the left join:
+```{r}
+# coast_vs_waste LEFT JOIN mismanaged_vs_gdp ... use the tidyverse (not raw SQL)
+coast_vs_waste %>%
+left_join(mismanaged_vs_gdp, by = c('code', 'entity', 'year'))
+
+coast_vs_waste %>%
+  mutate(nm = paste(entity, code)) %>%
+  select(entity, code, nm) %>%
+  unique() %>%
+  group_by(nm) %>%
+  summarize(n = n()) %>%
+  arrange(-n)
+  
+```
+#FB: Same number of rows this time!
+
+In words, if you were writing tests in your code, how would you check its accuracy?
+<1 - make sure the number of resulting rows makes sense, and check is the colomn names have changed. Do some filters/queries before and after to check values.>
+
+
+In code, check to ensure you still have all of the years for each country from the previously joined tables.
+
+
+```{r}
+# Here is an example to see if x equals y
+frank = "FRANK"
+chase = "CHASE"
+assertthat::are_equal(frank, chase) #returns FALSE
+# Create a similar test to see if each country still has all of the years
+```
+```{r}
+
+  year_list1 <- coast_vs_waste
+  year_list1 %>%
+  select(entity, code, year)
+
+```
+
+
+
+```{r}
+year_list2 <- coast_vs_waste %>%
+left_join(mismanaged_vs_gdp, by = c('entity', 'code', 'year')) %>%
+     select(entity, code, year)
+ assertthat::are_equal(year_list1, year_list2)
+```
+#FB: Same number of rows....How to compare these 2 results?
+
+```{r}
+#FB: Create a tempory tibble with just the years
+coast_vs_waste_comp <- coast_vs_waste %>%
+  select(year)
+
+#FB: Create the joined result
+coast_vs_waste_mis <- coast_vs_waste %>%
+   left_join(mismanaged_vs_gdp, by = 'code') %>%
+   select(year.x)
+   
+   
+#FB: Compare the 2 tibbles.
+assertthat::are_equal(coast_vs_waste_comp, coast_vs_waste_mis )
+```
+
+  #FB The 2 tables are the same!
+
+
+
+Join at least two of the data sets and create a linear regression with the `lm()` function. Make sure to use a group_by that makes sense and use 2 or more predictor variables.
+
+```{r}
+coast_vs_waste %>%
+
+ select(entity, year, code, total_population_gapminder) %>%
+ filter(code=="USA") %>%
+
+  ggplot(aes(x=as.factor(year), y=total_population_gapminder)) +
+  geom_point() + ggtitle("For USA")
+  
+
+```
+#FB: This looks like a good candidate fir a linear model!
+
+```{r}
+# left_join data
+# then
+# group_by _____
+mod = coast_vs_waste %>%
+  drop_na() %>%
+  select(entity, year, total_population_gapminder) %>%
+  group_by(entity) %>%
+  do(fit = lm(total_population_gapminder ~ year, data = .))
+mod$fit
+```
+
+#FB: Statistically valid model - essentual 0 p-value.
+R^2 is very high, so error is low.
+
+
+#```{r}
+coast_vs_waste %>%
+lm() 
+#```
+Display coefficients from your model.
+```{r}
+# write code to display them
+
+
+# left_join data
+# then
+# group_by _____
+coast_vs_waste %>%
+ select(entity, year, code, total_population_gapminder) %>%
+ filter(code=="USA") %>%
+summary() #%>%
+#model1 <- lm(total_population_gapminder ~ year, data = .) #%>% #conf.level_tidy(model1, conf.level = 0.95, func = stats::confint)
+
+```
+
+Plot your data and add a line of what the model would predict. *Advanced topic*
+```{r}
+# ggplot()
+```
+
+From your analysis of the data, what would you propose as a policy decision to reduce waste? Be thorough, highlight data points that matter in tables and charts and supply succinct sentences. 
+```{r}
+# Kick it off here!
+```
+
+Kick!
