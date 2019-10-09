@@ -1,0 +1,396 @@
+---
+title: "in_class"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('caret')
+library('tidyverse')
+
+# install.packages(c('DMwR', 'ROSE'))
+```
+
+
+Understanding Bias vs Variance
+```{r}
+set.seed(123)
+raw_dat = ggplot2::diamonds
+dat = raw_dat %>% sample_n(1000)
+
+dat %>%
+  ggplot(aes(x = carat, y = price)) +
+  geom_point()
+```
+
+Bias vs Variance
+```{r}
+dat_to_split = dat %>%
+  select(price, carat) %>%
+  mutate(id = row_number())
+
+dat_train = dat_to_split %>%
+  sample_n(700)
+
+dat_test = dat_to_split %>%
+  anti_join(dat_train, by = 'id') %>%
+  sample_n(300)
+
+
+# linear fit
+mod_lin = lm(price ~ carat, data = dat_train)  
+
+# polynomial fit (10 degree)
+mod_poly = lm(price ~ poly(carat, 10), data = dat_train)  
+summary(mod_poly)
+```
+
+Predictions vs. training data set
+```{r}
+preds_lin_train = predict(mod_lin, newdata = dat_train)
+preds_poly_train = predict(mod_poly, newdata = dat_train)
+
+# add to a data set
+dat_preds_train = dat_train %>% 
+  mutate(preds_lin = preds_lin_train,
+         preds_poly = preds_poly_train,
+         carat = carat,
+         price = price) %>%
+  select(-id)
+
+dat_preds_train %>%
+  ggplot(aes(x = carat)) + 
+  geom_point(aes(y = price)) + 
+  geom_line(aes(y = preds_lin), col = 'red') + 
+  geom_line(aes(y = preds_poly), col = 'blue')
+```
+
+Predictions vs Test Data Set
+```{r}
+preds_lin_test = predict(mod_lin, newdata = dat_test)
+preds_poly_test = predict(mod_poly, newdata = dat_test)
+
+# add to a data set
+dat_preds_test = dat_test %>% 
+  mutate(preds_lin = preds_lin_test,
+         preds_poly = preds_poly_test,
+         carat = carat,
+         price = price) %>%
+  select(-id)
+
+dat_preds_test %>%
+  ggplot(aes(x = carat)) + 
+  geom_point(aes(y = price)) + 
+  geom_line(aes(y = preds_lin), col = 'red') + 
+  geom_line(aes(y = preds_poly), col = 'blue')
+```
+
+
+
+
+```{r}
+dat_preds_test_tbl = tibble(price = integer(), preds_lin = double(), preds_poly = double(), model = integer())
+dat_mse_tbl = tibble(mse_lin = double(), mse_poly_5 = double(), mse_poly_10 = double(), model = integer())
+for(i in 1:20){
+  dat_to_split = dat %>%
+    select(price, carat) %>%
+    mutate(id = row_number())
+  dat_train = dat_to_split %>%
+    sample_n(700)
+  dat_test = dat_to_split %>%
+    anti_join(dat_train, by = 'id') %>%
+    sample_n(300)
+  # linear fit
+  mod_lin = lm(price ~ carat, data = dat_train)  
+  # polynomial fit (5 degree)
+  mod_poly_5 = lm(price ~ poly(carat, 5), data = dat_train)
+  # polynomial fit (10 degree)
+  mod_poly_10 = lm(price ~ poly(carat, 10), data = dat_train)
+  
+  preds_lin_test = predict(mod_lin, newdata = dat_test)
+  preds_poly_5_test = predict(mod_poly_5, newdata = dat_test)
+  preds_poly_10_test = predict(mod_poly_10, newdata = dat_test)
+  
+  # add to a data set
+  dat_preds_test = dat_test %>% 
+    mutate(preds_lin = preds_lin_test,
+           preds_poly_5 = preds_poly_5_test,
+           preds_poly_10 = preds_poly_10_test,
+           carat = carat,
+           price = price,
+           residuals_lin = preds_lin - price,
+           residuals_poly_5 = preds_poly_5 - price,
+           residuals_poly_10 = preds_poly_10 - price,
+           model = i) %>%
+    select(-id)
+  
+  dat_preds_test_tbl = bind_rows(dat_preds_test_tbl, dat_preds_test)
+  
+  dat_mse = tibble(mse_lin = mean(mod_lin$residuals^2), 
+                   mse_poly_5 = mean(mod_poly_5$residuals^2), 
+                   mse_poly_10 = mean(mod_poly_10$residuals^2), 
+                   model = i)
+  dat_mse_tbl = bind_rows(dat_mse_tbl, dat_mse)
+  
+}
+
+dat_preds_test_tbl %>%
+  ggplot(aes(x = carat, group = model)) + 
+  geom_point(aes(y = price)) + 
+  geom_line(aes(y = preds_lin), col = 'red', alpha = 0.5) + 
+  geom_line(aes(y = preds_poly_5), col = 'blue', alpha = 0.5) + 
+  geom_line(aes(y = preds_poly_10), col = 'green', alpha = 0.5)
+
+```
+
+
+```{r}
+dat_preds_test_tbl %>%
+  filter(abs(preds_poly_10) < 20000) %>%
+  ggplot(aes(x = carat, group = model)) + 
+  geom_point(aes(y = price)) + 
+  geom_line(aes(y = preds_lin), col = 'red', alpha = 0.5) + 
+  geom_line(aes(y = preds_poly_5), col = 'blue', alpha = 0.5) + 
+  geom_line(aes(y = preds_poly_10), col = 'green', alpha = 0.5)
+```
+
+
+Training Error
+```{r}
+dat_mse_tbl %>%
+  ggplot() +
+  geom_density(aes(mse_lin), fill = 'red', alpha = 0.5) +
+  geom_density(aes(mse_poly_5), fill = 'blue', alpha = 0.5) +
+  geom_density(aes(mse_poly_10), fill = 'green', alpha = 0.5)
+```
+
+
+Test Error
+```{r}
+dat_preds_test_tbl %>%
+  group_by(model) %>%
+  summarize(mse_lin = mean(residuals_lin^2),
+            mse_poly_5 = mean(residuals_poly_5^2),
+            mse_poly_10 = mean(residuals_poly_10^2)) %>%
+  filter(mse_poly_10 < 2e9) %>%
+  ggplot() + 
+  geom_density(aes(mse_lin), fill = 'red', alpha = 0.5) +
+  geom_density(aes(mse_poly_5), fill = 'blue', alpha = 0.5) +
+  geom_density(aes(mse_poly_10), fill = 'green', alpha = 0.5)
+```
+
+
+```{r}
+dat_preds_test_tbl %>%
+  group_by(model) %>%
+  summarize(mse_lin = mean(residuals_lin^2),
+            mse_poly_5 = mean(residuals_poly_5^2),
+            mse_poly_10 = mean(residuals_poly_10^2)) %>%
+  filter(mse_poly_10 < 5e6) %>%
+  ggplot() + 
+  geom_density(aes(mse_lin), fill = 'red', alpha = 0.5) +
+  geom_density(aes(mse_poly_5), fill = 'blue', alpha = 0.5) +
+  geom_density(aes(mse_poly_10), fill = 'green', alpha = 0.5)
+```
+
+
+
+
+
+Moving to Cross Validation
+```{r}
+# Parameters
+train_control = trainControl(
+    method = "cv", number = 5,
+    verboseIter = TRUE
+  )
+
+# K-fold (5 fold)
+model_k_5 = train(
+  price ~ carat, 
+  data = dat_train,
+  method = "lm",
+  trControl = train_control
+)
+```
+
+```{r}
+summary(model_k_5)
+```
+
+
+```{r}
+dat  = as_tibble(ISLR::Default)
+dat
+```
+
+
+Let's revisit the Default data set. "Yes" is a much smaller portion of the data. This imbalance will make it really difficult to predict this class. We would like to get an even balance of data in this case.
+```{r}
+dat %>%
+  group_by(default) %>%
+  count() %>%
+  ggplot(aes(x = default, y = n)) +
+  geom_col() + 
+  geom_label(aes(label = scales::percent(n / sum(n))))
+```
+
+
+Sampling Techniques
+```{r}
+dat_id = dat %>%
+  mutate(id = row_number(),
+         default = as.factor(default))
+
+dat_train = dat_id %>%
+  sample_n(7000)
+
+dat_test = dat_id %>%
+  anti_join(dat_train, by = 'id')
+
+# would remove id if using to train, keeping it for an example.
+```
+
+Downsample
+```{r}
+down_train <- downSample(x = dat_train[, -ncol(dat_train)],
+                         y = dat_train$default)
+table(down_train$default)  
+```
+
+Upsample
+```{r}
+up_train <- upSample(x = dat_train[, -ncol(dat_train)],
+                         y = dat_train$default)
+table(up_train$default)   
+```
+
+Hybrid - SMOTE
+```{r}
+# Requires a data.frame, not tibble
+dat_train_df = as.data.frame(dat_train)
+smote_train <- DMwR::SMOTE(default ~ ., data = dat_train_df)
+table(smote_train$default)   
+```
+
+
+Hybrid - ROSE
+```{r}
+rose_train <- ROSE::ROSE(default ~ ., data = dat_train)$data
+table(rose_train$default)   
+```
+
+
+
+
+Training...
+```{r}
+# caret has a stronge thing... must have "Class" as the predicted variable
+dat_test = dat_test %>% rename(Class = default) %>% mutate(Class = as.factor(Class))
+dat_train = dat_train %>% rename(Class = default) %>% mutate(Class = as.factor(Class))
+down_train = down_train %>% select(-default) #rename(Class = default) %>% mutate(Class = as.factor(Class)) huh?
+up_train = up_train %>% select(-default) #rename(Class = default) %>% mutate(Class = as.factor(Class)) huh?
+smote_train = smote_train %>% rename(Class = default) %>% mutate(Class = as.factor(Class))
+rose_train = rose_train %>% rename(Class = default) %>% mutate(Class = as.factor(Class))
+
+
+# Parameters
+train_control = trainControl(
+    method = "cv", number = 5
+  )
+```
+
+
+
+No sub sampling
+```{r}
+data_to_use = dat_train %>% select(-id)
+
+model = train(
+  Class ~ ., 
+  data = data_to_use,
+  method = "glm",
+  family = "binomial",
+  trControl = train_control
+)
+
+
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
+```
+
+
+Downsampling
+```{r}
+data_to_use = down_train # %>% select(-id)
+
+model = train(
+  Class ~ ., 
+  data = data_to_use,
+  method = "glm",
+  family = "binomial",
+  trControl = train_control
+)
+
+
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
+```
+
+
+Upsampling
+```{r}
+data_to_use = up_train # %>% select(-id)
+
+model = train(
+  Class ~ ., 
+  data = data_to_use,
+  method = "glm",
+  family = "binomial",
+  trControl = train_control
+)
+
+
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
+```
+
+SMOTE
+```{r}
+data_to_use = smote_train %>% select(-id)
+
+model = train(
+  Class ~ ., 
+  data = data_to_use,
+  method = "glm",
+  family = "binomial",
+  trControl = train_control
+)
+
+
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
+```
+
+
+ROSE
+```{r}
+data_to_use = rose_train %>% select(-id)
+
+model = train(
+  Class ~ ., 
+  data = data_to_use,
+  method = "glm",
+  family = "binomial",
+  trControl = train_control
+)
+
+
+predictions = predict(model, newdata = dat_test, type = 'raw')
+actuals = dat_test$Class
+confusionMatrix(predictions, actuals)
+```
