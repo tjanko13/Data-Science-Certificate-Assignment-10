@@ -8,6 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library('tidyverse')
+library('caret')
+
+#install.packages(c('DMwR', 'ROSE'))
 ```
 
 
@@ -19,35 +22,171 @@ You are on a crack squad of a group looking into whether or not reviews came fro
 ## Before Starting:
 Read about the data at <https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-06-04>
 
+# Data Source
+
 ```{r}
 ramen_ratings <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-06-04/ramen_ratings.csv")
-
-dat = ramen_ratings %>%
-  mutate(review_from_usa = country == 'United States') %>%
-  select(-country)
-
-dat
 ```
-
-
-
 
 # Begin EDA 
 
 ```{r}
+dat <- ramen_ratings %>%
+  mutate(review_from_usa = country == 'United States') %>%
+  select(-country, -review_number) %>% 
+  rename(Class = review_from_usa) %>% 
+  mutate(Class = as.factor(as.numeric(Class)))
 
+head(dat)
+```
+
+```{r}
+summary(dat)
+```
+
+```{r}
+select(dat:variety)
 ```
 
 
 # Expore NA values
 Show how many `NA` there are and how to interpret these `NA` values, explain what you will do with them.
-< Answer Here >
+< Can delete the rows that contain NAs, or impute the continuous variables. I decided to just remove the rows. >
 ```{r}
-colSums(is.na(dat))
+#colSums(is.na(dat))
+na_data <- dat %>%
+  filter(!is.na(stars)) %>% 
+  filter(!is.na(style))
+#  mutate(stars = if_else(is.na(stars), mean(stars), stars))
 ```
 
-...clean, wrangle, filter, etc. ...
+# Create ID Column
+```{r}
+id_data <- na_data %>%
+  mutate(id = row_number()) %>% 
+  select(id, Class, everything())
+```
 
-...build a model...
+```{r}
+id_data %>% 
+  group_by(Class) %>% 
+  summarise(n=n())
+```
 
-...explain your results...
+
+# Look at data balance
+```{r}
+id_data %>%
+  group_by(Class) %>%
+  count() %>%
+  ggplot(aes(x = Class, y = n)) +
+  geom_col() + 
+  geom_label(aes(label = scales::percent(n / sum(n))))
+```
+
+# Split data into Train and Test 80/20
+```{r}
+set.seed(123)
+
+train_data <- id_data %>%
+  sample_n(2530)
+
+test_data <- id_data %>%
+  anti_join(train_data, by = 'id')
+
+train_data <- train_data %>% select(-id)
+test_data <- test_data %>% select(-id)
+```
+
+# Look at Down Sample 
+```{r}
+down_train <- downSample(x = train_data[, -ncol(train_data)],
+                         y = train_data$Class)
+table(down_train$Class)
+```
+
+# Look at Up Sample 
+```{r}
+up_train <- upSample(x = train_data[, -ncol(train_data)],
+                         y = train_data$Class)
+table(up_train$Class)
+```
+
+# Look at Hybrid - SMOTE 
+```{r}
+# Requires a data.frame, not tibble
+train_data_df <- as.data.frame(train_data)
+smote_train <- DMwR::SMOTE(Class ~ ., data = train_data_df)
+table(smote_train$Class)
+```
+
+# Look at Hybrid - ROSE 
+```{r}
+rose_train <- ROSE::ROSE(Class ~ ., data = train_data)$data
+table(rose_train$Class) 
+```
+
+
+# K-Fold Parameters 
+```{r}
+# Parameters
+train_control <- trainControl(method = "cv", number = 5)
+```
+
+# Model using up-sampling 
+```{r}
+model_data <- up_train
+
+model <- train(model_data, Class ~ ., data = model_data, method = "glm", family = "binomial", trControl = train_control)
+
+predictions <- predict(model, newdata = test_data, type = 'raw')
+actuals <- test_data$Class
+confusionMatrix(predictions, actuals)
+```
+
+# No sub-sampling 
+```{r}
+model_data <- train_data
+
+model <- train(Class ~ ., data = model_data, method = "glm", family = "binomial", trControl = train_control)
+
+predictions <- predict(model, newdata = test_data, type = 'raw')
+actuals <- test_data$Class
+confusionMatrix(predictions, actuals)
+```
+
+# Model using down sampling 
+```{r}
+model_data <- down_train
+
+model <- train(Class ~ ., data = model_data, method = "glm", family = "binomial", trControl = train_control)
+
+predictions <- predict(model, newdata = test_data, type = 'raw')
+actuals <- test_data$Class
+confusionMatrix(predictions, actuals)
+```
+
+# Model using SMOTE sampling 
+```{r}
+model_data <- smote_train
+
+model <- train(Class ~ ., data = model_data, method = "glm", family = "binomial", trControl = train_control)
+
+predictions <- predict(model, newdata = test_data, type = 'raw')
+actuals <- test_data$Class
+confusionMatrix(predictions, actuals)
+```
+
+# Model using ROSE sampling 
+```{r}
+model_data <- rose_train
+
+model <- train(Class ~ ., data = data_to_use, method = "glm", family = "binomial", trControl = train_control)
+
+predictions <- predict(model, newdata = test_data, type = 'raw')
+actuals <- test_data$Class
+confusionMatrix(predictions, actuals)
+```
+
+
+
